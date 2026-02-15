@@ -15,7 +15,7 @@ score = 0
 spawn_timer = 0
 
 # Slash trail memory
-trail_points = deque(maxlen=15)
+trail_points = deque(maxlen=20)
 
 while True:
     success, frame = cap.read()
@@ -27,7 +27,7 @@ while True:
 
     landmarks = tracker.get_landmarks(frame)
 
-    # Spawn fruit every 1.5 sec (slower)
+    # Spawn fruit every 1.5 seconds (slower gameplay)
     if time.time() - spawn_timer > 1.5:
         fruits.append(Fruit(w, h))
         spawn_timer = time.time()
@@ -43,21 +43,27 @@ while True:
         if landmarks:
             fx, fy = landmarks[8][1], landmarks[8][2]
 
-            # Add to trail
+            # Add finger position to trail
             trail_points.append((fx, fy))
 
             if fruit.is_sliced(fx, fy):
                 fruits.remove(fruit)
                 score += 1
 
-    # Draw slash trail
-    for i in range(1, len(trail_points)):
-        thickness = int(8 * (1 - i / len(trail_points)))
-        cv2.line(frame,
-                 trail_points[i - 1],
-                 trail_points[i],
-                 (0, 255, 255),
-                 thickness)
+    # Draw slash trail safely
+    if len(trail_points) > 1:
+        for i in range(1, len(trail_points)):
+            pt1 = trail_points[i - 1]
+            pt2 = trail_points[i]
+
+            if pt1 is None or pt2 is None:
+                continue
+
+            thickness = int(6 * (1 - i / len(trail_points)))
+            if thickness < 1:
+                thickness = 1
+
+            cv2.line(frame, pt1, pt2, (0, 255, 255), thickness)
 
     # Score display
     cv2.putText(frame, f"Score: {score}",
